@@ -8,7 +8,7 @@ import file_encrypt as fien
 import hashlib
 from Crypto.Cipher import AES
 
-host_ip, server_port = "127.0.0.1", 9976
+host_ip, server_port = "127.0.0.1", 9967
 tcp_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM, )
 
 username = input('Username: ')
@@ -59,7 +59,7 @@ def data_exchange(se_key):
     file = input('Enter filename: ')
     original_file = open(file, 'rb').read()
     hash_data = hashlib.sha1(original_file).hexdigest()[:-8]
-    hash_data = AES.new(hash_data, AES.MODE_ECB).encrypt(se_key.rjust(32))
+    hash_data = AES.new(se_key.rjust(32), AES.MODE_ECB).encrypt(hash_data)
     fien.encrypt(fien.getKey(se_key), file)
     enc_file_name = 'encrypted_' + file
     f = open(enc_file_name, 'rb')
@@ -67,7 +67,7 @@ def data_exchange(se_key):
     f.close()
     sent_data += encrypted_file
     print(sent_data)
-    sent_data += b'!!!hash!!!'+hash_data
+    sent_data += b'!!!hash!!!' + hash_data
     print(sent_data)
     return sent_data
 
@@ -93,6 +93,8 @@ try:
             data = data_exchange(session_key)
         tcp_client.sendall(data)
         received = tcp_client.recv(1024)
+        if received.decode().startswith('MAC'):
+            data = data_exchange(session_key)
         print("Bytes Received: {}".format(received.decode()))
 except KeyboardInterrupt:
     print('connection closed by user')

@@ -7,6 +7,8 @@ from cryptography.hazmat.primitives.asymmetric import padding
 import os
 import datetime as dt
 import file_encrypt as fien
+import hashlib
+from Crypto.Cipher import AES
 
 
 def generate_asymmetric_keys():
@@ -69,11 +71,9 @@ class ServerHandler(socketserver.BaseRequestHandler):
                             label=None
                         )
                     )
-                    print(self.session_key)
                 elif self.action == 'send_data':
                     self.data, MAC = self.data[9:].split(b'!!!hash!!!')[0], self.data[9:].split(b'!!!hash!!!')[1]
-                    print(self.data)
-                    print(MAC)
+                    MAC = AES.new(self.session_key.rjust(32), AES.MODE_ECB).decrypt(MAC)
                     self.enc_data = self.data
                     f = open('received__file' + c_time, 'wb')
                     f.write(self.enc_data)
@@ -81,15 +81,32 @@ class ServerHandler(socketserver.BaseRequestHandler):
                     try:
                         fien.decrypt(fien.getKey(self.session_key.decode()), 'received__file' + c_time)
                         os.remove('received__file' + c_time)
+                        try:
+                            ff = open('file' + c_time, 'rb').read()
+                            if hashlib.sha1(ff).hexdigest()[:-8] == MAC.decode():
+                                print('MAC is correct')
+                            else:
+                                self.request.sendall("MAC is incorrect. Send again.".encode())
+                        except:
+                            pass
+
+                        # ff = open('file ' + c_time, 'rb').read()
+                        # print('hashed data ' + hashlib.sha1(ff).hexdigest()[:-8])
+                        # print('MAC ' + MAC)
+                        # if hashlib.sha1(ff).hexdigest()[:-8] == MAC:
+                        #     print('MAC is correct')
+                        # else:
+                        #     self.request.sendall("MAC is incorrect. Send again.".encode())
+
                     except Exception as e:
                         os.remove('received__file' + c_time)
 
-                # self.request.sendall("ACK from TCP Server".encode())
+                self.request.sendall("ACK from TCP Server".encode())
         except KeyboardInterrupt:
             print('connection closed!')
 
 
 if __name__ == "__main__":
-    HOST, PORT = "localhost", 9976
+    HOST, PORT = "localhost", 9967
     tcp_server = socketserver.TCPServer((HOST, PORT), ServerHandler)
     tcp_server.serve_forever()
