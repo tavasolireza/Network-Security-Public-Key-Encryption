@@ -78,8 +78,9 @@ class ServerHandler(socketserver.BaseRequestHandler):
                                 label=None
                             )
                         )
+                        print(self.session_key)
                     elif self.action == 'send_data':
-                        print(self.new_data)
+                        # print(self.new_data)
                         try:
                             self.new_data, MAC = self.new_data.split(b'!!!hash!!!')[0], \
                                                  self.new_data.split(b'!!!hash!!!')[
@@ -112,6 +113,6 @@ class ServerHandler(socketserver.BaseRequestHandler):
 
 
 if __name__ == "__main__":
-    HOST, PORT = "localhost", 9966
+    HOST, PORT = "localhost", 9965
     tcp_server = socketserver.TCPServer((HOST, PORT), ServerHandler)
     tcp_server.serve_forever()

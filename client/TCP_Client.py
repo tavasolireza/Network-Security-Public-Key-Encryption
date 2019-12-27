@@ -7,8 +7,9 @@ from cryptography.hazmat.primitives.asymmetric import padding
 import file_encrypt as fien
 import hashlib
 from Crypto.Cipher import AES
+import datetime
 
-host_ip, server_port = "127.0.0.1", 9966
+host_ip, server_port = "127.0.0.1", 9965
 tcp_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM, )
 
 username = input('Username: ')
@@ -75,6 +76,7 @@ def data_exchange(se_key):
 try:
     server_public_key = b''
     tcp_client.connect((host_ip, server_port))
+    s_time = datetime.datetime.now()
     public, private = generate_asymmetric_keys()
     rpublic, rprivate = storing_keys(public, private)
 
@@ -88,13 +90,21 @@ try:
 
     while True:
         data = ''
-        choose_action = input('Type \'d\' to send data: ')
-        if choose_action == 'd':
-            data = data_exchange(session_key)
-        tcp_client.sendall(data)
-        received = tcp_client.recv(1024)
-        if received.decode().startswith('MAC'):
-            data = data_exchange(session_key)
+        f_time = datetime.datetime.now()
+        if (f_time - s_time).total_seconds() > 15:
+            print('## Session key expired ##')
+            session_key = input('enter new session key: ')
+            tcp_client.sendall(b'snd_sekey' + public_key_encrypt(server_public_key, session_key))
+            s_time = datetime.datetime.now()
+        else:
+            choose_action = input('Type \'d\' to send data: ')
+            if choose_action == 'd':
+                data = data_exchange(session_key)
+            tcp_client.sendall(data)
+            received = tcp_client.recv(1024)
+            if received.decode().startswith('MAC'):
+                data = data_exchange(session_key)
+
         print("Bytes Received: {}".format(received.decode()))
 except KeyboardInterrupt:
     print('connection closed by user')
