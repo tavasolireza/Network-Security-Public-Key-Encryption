@@ -9,6 +9,7 @@ import datetime as dt
 import file_encrypt as fien
 import hashlib
 from Crypto.Cipher import AES
+from openpyxl import load_workbook
 
 
 def generate_asymmetric_keys():
@@ -35,9 +36,12 @@ def storing_keys(public_key, private_key):
 
 
 def info_file(username, user_public, server_private):
-    print(user_public)
-    with open('table.secret', 'a+') as f:
-        f.write(f'{username}||||||{user_public}||||||{server_private}')
+    workbook_name = 'secret_table.xlsx'
+    wb = load_workbook(workbook_name)
+    page = wb.active
+    page.append([username, user_public, server_private])
+
+    wb.save(filename=workbook_name)
 
 
 class ServerHandler(socketserver.BaseRequestHandler):
@@ -67,7 +71,7 @@ class ServerHandler(socketserver.BaseRequestHandler):
                     if self.action == 'snd_usrnm':
                         self.username = self.new_data[:-271].decode()
                         self.user_public_key = self.new_data[-271:].decode()
-                        # info_file(self.username, self.user_public_key, self.rprivate)
+                        info_file(self.username, self.user_public_key, self.rprivate)
                         self.request.sendall(b'server_public' + self.rpublic)
                     elif self.action == 'snd_sekey':
                         self.session_key = self.private.decrypt(
