@@ -4,6 +4,9 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
+import os
+import datetime as dt
+import file_encrypt as fien
 
 
 def generate_asymmetric_keys():
@@ -47,8 +50,10 @@ class ServerHandler(socketserver.BaseRequestHandler):
         try:
             while True:
                 self.data = b''
+                self.enc_data = b''
+                c_time = ' ' + str(dt.datetime.now()).split('.')[0]
                 # self.request - TCP socket connected to the client
-                self.data = self.request.recv(1024).strip()
+                self.data = self.request.recv(2048).strip()
                 self.action = self.data[:9].decode()
                 if self.action == 'snd_usrnm':
                     self.username = self.data[9:-271].decode()
@@ -65,6 +70,19 @@ class ServerHandler(socketserver.BaseRequestHandler):
                         )
                     )
                     print(self.session_key)
+                elif self.action == 'send_data':
+                    self.data, MAC = self.data[9:].split(b'!!!hash!!!')[0], self.data[9:].split(b'!!!hash!!!')[1]
+                    print(self.data)
+                    print(MAC)
+                    self.enc_data = self.data
+                    f = open('received__file' + c_time, 'wb')
+                    f.write(self.enc_data)
+                    f.close()
+                    try:
+                        fien.decrypt(fien.getKey(self.session_key.decode()), 'received__file' + c_time)
+                        os.remove('received__file' + c_time)
+                    except Exception as e:
+                        os.remove('received__file' + c_time)
 
                 # self.request.sendall("ACK from TCP Server".encode())
         except KeyboardInterrupt:
@@ -72,6 +90,6 @@ class ServerHandler(socketserver.BaseRequestHandler):
 
 
 if __name__ == "__main__":
-    HOST, PORT = "localhost", 9982
+    HOST, PORT = "localhost", 9976
     tcp_server = socketserver.TCPServer((HOST, PORT), ServerHandler)
     tcp_server.serve_forever()

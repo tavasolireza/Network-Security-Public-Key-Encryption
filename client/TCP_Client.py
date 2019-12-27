@@ -4,8 +4,11 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
+import file_encrypt as fien
+import hashlib
+from Crypto.Cipher import AES
 
-host_ip, server_port = "127.0.0.1", 9982
+host_ip, server_port = "127.0.0.1", 9976
 tcp_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM, )
 
 username = input('Username: ')
@@ -51,6 +54,24 @@ def public_key_encrypt(server_key, message):
     )
 
 
+def data_exchange(se_key):
+    sent_data = b'send_data'
+    file = input('Enter filename: ')
+    original_file = open(file, 'rb').read()
+    hash_data = hashlib.sha1(original_file).hexdigest()[:-8]
+    hash_data = AES.new(hash_data, AES.MODE_ECB).encrypt(se_key.rjust(32))
+    fien.encrypt(fien.getKey(se_key), file)
+    enc_file_name = 'encrypted_' + file
+    f = open(enc_file_name, 'rb')
+    encrypted_file = f.read()
+    f.close()
+    sent_data += encrypted_file
+    print(sent_data)
+    sent_data += b'!!!hash!!!'+hash_data
+    print(sent_data)
+    return sent_data
+
+
 try:
     server_public_key = b''
     tcp_client.connect((host_ip, server_port))
@@ -62,15 +83,17 @@ try:
     if received.startswith(b'server_public'):
         server_public_key = received[13:]
 
-    print(server_public_key)
     session_key = input('enter session key: ')
-    print(len(public_key_encrypt(server_public_key, session_key)))
-    print()
     tcp_client.sendall(b'snd_sekey' + public_key_encrypt(server_public_key, session_key))
 
-    # while True:
-    #     received = tcp_client.recv(1024)
-    #     print("Bytes Received: {}".format(received.decode()))
+    while True:
+        data = ''
+        choose_action = input('Type \'d\' to send data: ')
+        if choose_action == 'd':
+            data = data_exchange(session_key)
+        tcp_client.sendall(data)
+        received = tcp_client.recv(1024)
+        print("Bytes Received: {}".format(received.decode()))
 except KeyboardInterrupt:
     print('connection closed by user')
 finally:
