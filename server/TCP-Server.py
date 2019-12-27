@@ -52,54 +52,59 @@ class ServerHandler(socketserver.BaseRequestHandler):
         try:
             while True:
                 self.data = b''
-                self.enc_data = b''
-                c_time = ' ' + str(dt.datetime.now()).split('.')[0]
-                # self.request - TCP socket connected to the client
+                self.new_data = b''
                 self.data = self.request.recv(2048).strip()
-                self.action = self.data[:9].decode()
-                if self.action == 'snd_usrnm':
-                    self.username = self.data[9:-271].decode()
-                    self.user_public_key = self.data[-271:].decode()
-                    # info_file(self.username, self.user_public_key, self.rprivate)
-                    self.request.sendall(b'server_public' + self.rpublic)
-                elif self.action == 'snd_sekey':
-                    self.session_key = self.private.decrypt(
-                        self.data[9:],
-                        padding.OAEP(
-                            mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                            algorithm=hashes.SHA256(),
-                            label=None
+                try:
+                    self.action = self.data[:9].decode()
+                    if not (self.action.startswith('send') or self.action.startswith('snd')):
+                        raise ValueError
+                    self.new_data = self.data[9:]
+                    self.enc_data = b''
+                    c_time = ' ' + str(dt.datetime.now()).split('.')[0]
+                except (UnicodeDecodeError, ValueError):
+                    self.new_data = self.data
+                finally:
+                    if self.action == 'snd_usrnm':
+                        self.username = self.new_data[:-271].decode()
+                        self.user_public_key = self.new_data[-271:].decode()
+                        # info_file(self.username, self.user_public_key, self.rprivate)
+                        self.request.sendall(b'server_public' + self.rpublic)
+                    elif self.action == 'snd_sekey':
+                        self.session_key = self.private.decrypt(
+                            self.new_data,
+                            padding.OAEP(
+                                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                                algorithm=hashes.SHA256(),
+                                label=None
+                            )
                         )
-                    )
-                elif self.action == 'send_data':
-                    self.data, MAC = self.data[9:].split(b'!!!hash!!!')[0], self.data[9:].split(b'!!!hash!!!')[1]
-                    MAC = AES.new(self.session_key.rjust(32), AES.MODE_ECB).decrypt(MAC)
-                    self.enc_data = self.data
-                    f = open('received__file' + c_time, 'wb')
-                    f.write(self.enc_data)
-                    f.close()
-                    try:
-                        fien.decrypt(fien.getKey(self.session_key.decode()), 'received__file' + c_time)
-                        os.remove('received__file' + c_time)
+                    elif self.action == 'send_data':
+                        print(self.new_data)
                         try:
-                            ff = open('file' + c_time, 'rb').read()
-                            if hashlib.sha1(ff).hexdigest()[:-8] == MAC.decode():
-                                print('MAC is correct')
-                            else:
-                                self.request.sendall("MAC is incorrect. Send again.".encode())
+                            self.new_data, MAC = self.new_data.split(b'!!!hash!!!')[0], \
+                                                 self.new_data.split(b'!!!hash!!!')[
+                                                     1]
+                            MAC = AES.new(self.session_key.rjust(32), AES.MODE_ECB).decrypt(MAC)
                         except:
                             pass
+                        self.enc_data += self.new_data
+                        f = open('received__file' + c_time, 'wb')
+                        f.write(self.enc_data)
+                        f.close()
+                        try:
+                            fien.decrypt(fien.getKey(self.session_key.decode()), 'received__file' + c_time)
+                            os.remove('received__file' + c_time)
+                            try:
+                                ff = open('file' + c_time, 'rb').read()
+                                if hashlib.sha1(ff).hexdigest()[:-8] == MAC.decode():
+                                    print('MAC is correct')
+                                else:
+                                    self.request.sendall("MAC is incorrect. Send again.".encode())
+                            except:
+                                pass
 
-                        # ff = open('file ' + c_time, 'rb').read()
-                        # print('hashed data ' + hashlib.sha1(ff).hexdigest()[:-8])
-                        # print('MAC ' + MAC)
-                        # if hashlib.sha1(ff).hexdigest()[:-8] == MAC:
-                        #     print('MAC is correct')
-                        # else:
-                        #     self.request.sendall("MAC is incorrect. Send again.".encode())
-
-                    except Exception as e:
-                        os.remove('received__file' + c_time)
+                        except Exception as e:
+                            os.remove('received__file' + c_time)
 
                 self.request.sendall("ACK from TCP Server".encode())
         except KeyboardInterrupt:
@@ -107,6 +112,6 @@ class ServerHandler(socketserver.BaseRequestHandler):
 
 
 if __name__ == "__main__":
-    HOST, PORT = "localhost", 9967
+    HOST, PORT = "localhost", 9966
     tcp_server = socketserver.TCPServer((HOST, PORT), ServerHandler)
     tcp_server.serve_forever()

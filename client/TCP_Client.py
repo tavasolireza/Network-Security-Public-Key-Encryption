@@ -8,7 +8,7 @@ import file_encrypt as fien
 import hashlib
 from Crypto.Cipher import AES
 
-host_ip, server_port = "127.0.0.1", 9967
+host_ip, server_port = "127.0.0.1", 9966
 tcp_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM, )
 
 username = input('Username: ')
