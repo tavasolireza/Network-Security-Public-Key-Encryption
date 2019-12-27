@@ -11,6 +11,8 @@ import hashlib
 from Crypto.Cipher import AES
 from openpyxl import load_workbook
 
+server_name = input('name: ')
+
 
 def generate_asymmetric_keys():
     private_key = rsa.generate_private_key(
@@ -72,7 +74,7 @@ class ServerHandler(socketserver.BaseRequestHandler):
                         self.username = self.new_data[:-271].decode()
                         self.user_public_key = self.new_data[-271:].decode()
                         info_file(self.username, self.user_public_key, self.rprivate)
-                        self.request.sendall(b'server_public' + self.rpublic)
+                        self.request.sendall(server_name.encode() + b'server_public' + self.rpublic)
                     elif self.action == 'snd_sekey':
                         self.session_key = self.private.decrypt(
                             self.new_data,

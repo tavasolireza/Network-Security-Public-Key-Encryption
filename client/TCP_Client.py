@@ -8,6 +8,7 @@ import file_encrypt as fien
 import hashlib
 from Crypto.Cipher import AES
 import datetime
+from openpyxl import load_workbook
 
 host_ip, server_port = "127.0.0.1", 9965
 tcp_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM, )
@@ -73,8 +74,17 @@ def data_exchange(se_key):
     return sent_data
 
 
+def info_file(servername, server_public, user_private):
+    workbook_name = 'secret_table.xlsx'
+    wb = load_workbook(workbook_name)
+    page = wb.active
+    page.append([servername, server_public, user_private])
+    wb.save(filename=workbook_name)
+
+
 try:
     server_public_key = b''
+    server_name = b''
     tcp_client.connect((host_ip, server_port))
     s_time = datetime.datetime.now()
     public, private = generate_asymmetric_keys()
@@ -82,8 +92,11 @@ try:
 
     tcp_client.sendall(b'snd_usrnm' + username.encode() + rpublic)
     received = tcp_client.recv(1024)
-    if received.startswith(b'server_public'):
-        server_public_key = received[13:]
+    if received.__contains__(b'server_public'):
+        server_name, server_public_key = received.split(b'server_public')[0], received.split(b'server_public')[1]
+        info_file(server_name, server_public_key, rprivate)
+
+    # print(server_public_key)
 
     session_key = input('enter session key: ')
     tcp_client.sendall(b'snd_sekey' + public_key_encrypt(server_public_key, session_key))
