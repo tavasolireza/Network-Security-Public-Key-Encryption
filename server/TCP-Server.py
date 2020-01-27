@@ -106,7 +106,9 @@ class ServerHandler(socketserver.BaseRequestHandler):
                                 if hashlib.sha1(ff).hexdigest()[:-8] == MAC.decode():
                                     print('MAC is correct')
                                 else:
+                                    print('MAC is incorrect!')
                                     self.request.sendall("MAC is incorrect. Send again.".encode())
+
                             except:
                                 pass
 
@@ -119,6 +121,6 @@ class ServerHandler(socketserver.BaseRequestHandler):
 
 
 if __name__ == "__main__":
-    HOST, PORT = "localhost", 9965
+    HOST, PORT = "172.23.188.93", 8000
     tcp_server = socketserver.TCPServer((HOST, PORT), ServerHandler)
     tcp_server.serve_forever()

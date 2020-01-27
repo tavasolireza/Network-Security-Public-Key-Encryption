@@ -10,7 +10,7 @@ from Crypto.Cipher import AES
 import datetime
 from openpyxl import load_workbook
 
-host_ip, server_port = "127.0.0.1", 9965
+host_ip, server_port = "172.23.188.93", 8000
 tcp_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM, )
 
 username = input('Username: ')
@@ -70,7 +70,6 @@ def data_exchange(se_key):
     sent_data += encrypted_file
     print(sent_data)
     sent_data += b'!!!hash!!!' + hash_data
-    print(sent_data)
     return sent_data
 
 
